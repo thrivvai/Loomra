@@ -1,0 +1,1178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="A private, static OpenRouter chat interface for Netlify." />
+    <title>Loomra Chat</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0f19;
+        --panel: rgba(16, 24, 39, 0.88);
+        --panel-solid: #101827;
+        --panel-soft: rgba(30, 41, 59, 0.7);
+        --border: rgba(148, 163, 184, 0.18);
+        --border-strong: rgba(148, 163, 184, 0.34);
+        --text: #eef2ff;
+        --muted: #9ca3af;
+        --muted-strong: #cbd5e1;
+        --brand: #8b5cf6;
+        --brand-2: #06b6d4;
+        --brand-3: #22c55e;
+        --danger: #fb7185;
+        --warning: #facc15;
+        --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+        --radius-xl: 28px;
+        --radius-lg: 20px;
+        --radius-md: 14px;
+        --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body { height: 100%; }
+
+      body {
+        margin: 0;
+        min-height: 100%;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at top left, rgba(139, 92, 246, 0.28), transparent 32rem),
+          radial-gradient(circle at 80% 10%, rgba(6, 182, 212, 0.20), transparent 28rem),
+          radial-gradient(circle at 50% 100%, rgba(34, 197, 94, 0.12), transparent 35rem),
+          var(--bg);
+        color: var(--text);
+        font-family: var(--font);
+      }
+
+      button, input, textarea, select { font: inherit; }
+
+      button {
+        border: 0;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.65;
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 18px;
+        height: 100vh;
+        padding: 18px;
+      }
+
+      .sidebar,
+      .chat-card,
+      .settings-dialog {
+        border: 1px solid var(--border);
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.78));
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(22px);
+      }
+
+      .sidebar {
+        display: flex;
+        min-height: 0;
+        flex-direction: column;
+        border-radius: var(--radius-xl);
+        padding: 18px;
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 44px;
+        height: 44px;
+        place-items: center;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: white;
+        font-size: 22px;
+        font-weight: 800;
+        box-shadow: 0 12px 30px rgba(139, 92, 246, 0.35);
+      }
+
+      .brand-copy h1 {
+        margin: 0;
+        font-size: 18px;
+        letter-spacing: -0.03em;
+      }
+
+      .brand-copy p {
+        margin: 2px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .new-chat {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        min-height: 44px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: white;
+        font-weight: 750;
+        box-shadow: 0 16px 40px rgba(6, 182, 212, 0.18);
+      }
+
+      .sidebar-section-title {
+        margin: 20px 4px 8px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .chat-list {
+        display: flex;
+        min-height: 0;
+        flex: 1;
+        flex-direction: column;
+        gap: 8px;
+        overflow: auto;
+        padding-right: 3px;
+      }
+
+      .chat-list button {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px;
+        width: 100%;
+        border: 1px solid transparent;
+        border-radius: 14px;
+        background: transparent;
+        color: var(--muted-strong);
+        padding: 11px 12px;
+        text-align: left;
+      }
+
+      .chat-list button:hover,
+      .chat-list button.active {
+        border-color: var(--border);
+        background: rgba(148, 163, 184, 0.08);
+        color: var(--text);
+      }
+
+      .chat-title {
+        overflow: hidden;
+        font-size: 14px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .chat-date {
+        grid-column: 1 / -1;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .delete-chat {
+        display: grid;
+        width: 26px;
+        height: 26px;
+        place-items: center;
+        border-radius: 9px;
+        color: var(--muted);
+      }
+
+      .delete-chat:hover {
+        background: rgba(251, 113, 133, 0.12);
+        color: var(--danger);
+      }
+
+      .sidebar-footer {
+        display: grid;
+        gap: 10px;
+        padding-top: 14px;
+      }
+
+      .ghost-button,
+      .pill-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 40px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.08);
+        color: var(--text);
+        padding: 0 14px;
+        font-weight: 750;
+      }
+
+      .ghost-button:hover,
+      .pill-button:hover {
+        border-color: var(--border-strong);
+        background: rgba(148, 163, 184, 0.14);
+      }
+
+      .ghost-button.danger:hover {
+        border-color: rgba(251, 113, 133, 0.4);
+        background: rgba(251, 113, 133, 0.12);
+        color: #fecdd3;
+      }
+
+      .chat-card {
+        display: grid;
+        min-width: 0;
+        min-height: 0;
+        grid-template-rows: auto 1fr auto;
+        border-radius: var(--radius-xl);
+        overflow: hidden;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        border-bottom: 1px solid var(--border);
+        padding: 16px 18px;
+      }
+
+      .mobile-menu { display: none; }
+
+      .session-heading {
+        min-width: 0;
+      }
+
+      .session-heading h2 {
+        overflow: hidden;
+        margin: 0;
+        font-size: 17px;
+        letter-spacing: -0.02em;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .session-heading p {
+        margin: 3px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .model-chip {
+        max-width: 38vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .status-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: var(--danger);
+        box-shadow: 0 0 0 5px rgba(251, 113, 133, 0.12);
+      }
+
+      .status-dot.ready {
+        background: var(--brand-3);
+        box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.14);
+      }
+
+      .messages {
+        min-height: 0;
+        overflow: auto;
+        padding: 28px clamp(16px, 5vw, 64px);
+        scroll-behavior: smooth;
+      }
+
+      .empty-state {
+        display: grid;
+        min-height: 100%;
+        place-items: center;
+        text-align: center;
+      }
+
+      .empty-card {
+        width: min(760px, 100%);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-xl);
+        background: rgba(15, 23, 42, 0.48);
+        padding: clamp(24px, 6vw, 52px);
+      }
+
+      .empty-card h3 {
+        margin: 0;
+        font-size: clamp(34px, 8vw, 68px);
+        letter-spacing: -0.075em;
+        line-height: 0.96;
+      }
+
+      .gradient-text {
+        background: linear-gradient(135deg, #fff, #c4b5fd 42%, #67e8f9);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .empty-card p {
+        max-width: 580px;
+        margin: 18px auto 0;
+        color: var(--muted-strong);
+        font-size: 16px;
+        line-height: 1.6;
+      }
+
+      .prompt-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 28px;
+      }
+
+      .prompt-grid button {
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: rgba(148, 163, 184, 0.08);
+        color: var(--muted-strong);
+        padding: 15px;
+        text-align: left;
+      }
+
+      .prompt-grid button:hover {
+        border-color: rgba(139, 92, 246, 0.45);
+        background: rgba(139, 92, 246, 0.12);
+        color: var(--text);
+      }
+
+      .message-row {
+        display: flex;
+        gap: 13px;
+        margin: 0 auto 22px;
+        max-width: 920px;
+      }
+
+      .message-row.user {
+        flex-direction: row-reverse;
+      }
+
+      .avatar {
+        display: grid;
+        flex: 0 0 34px;
+        width: 34px;
+        height: 34px;
+        place-items: center;
+        border-radius: 13px;
+        background: rgba(148, 163, 184, 0.14);
+        color: var(--muted-strong);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .message-row.user .avatar {
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: white;
+      }
+
+      .bubble {
+        min-width: 0;
+        max-width: min(720px, 78%);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        background: rgba(15, 23, 42, 0.62);
+        padding: 14px 16px;
+        line-height: 1.62;
+        white-space: pre-wrap;
+      }
+
+      .message-row.user .bubble {
+        border-color: rgba(139, 92, 246, 0.25);
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.28), rgba(6, 182, 212, 0.18));
+      }
+
+      .message-meta {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .typing {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .typing span {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: var(--muted-strong);
+        animation: pulse 1s infinite ease-in-out;
+      }
+
+      .typing span:nth-child(2) { animation-delay: 0.15s; }
+      .typing span:nth-child(3) { animation-delay: 0.3s; }
+
+      @keyframes pulse {
+        0%, 80%, 100% { opacity: 0.35; transform: translateY(0); }
+        40% { opacity: 1; transform: translateY(-3px); }
+      }
+
+      .composer-wrap {
+        border-top: 1px solid var(--border);
+        padding: 16px clamp(16px, 5vw, 64px) 18px;
+      }
+
+      .composer {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        max-width: 920px;
+        margin: 0 auto;
+        border: 1px solid var(--border-strong);
+        border-radius: 24px;
+        background: rgba(2, 6, 23, 0.42);
+        padding: 10px;
+      }
+
+      textarea {
+        min-height: 48px;
+        max-height: 220px;
+        resize: none;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--text);
+        padding: 13px 10px 10px 14px;
+        line-height: 1.5;
+      }
+
+      textarea::placeholder { color: #64748b; }
+
+      .send-button {
+        align-self: end;
+        width: 48px;
+        height: 48px;
+        border-radius: 17px;
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: white;
+        font-size: 20px;
+        font-weight: 900;
+      }
+
+      .composer-hint {
+        max-width: 920px;
+        margin: 8px auto 0;
+        color: var(--muted);
+        font-size: 11px;
+        text-align: center;
+      }
+
+      .settings-backdrop {
+        position: fixed;
+        inset: 0;
+        display: none;
+        place-items: center;
+        background: rgba(2, 6, 23, 0.72);
+        padding: 18px;
+        z-index: 20;
+      }
+
+      .settings-backdrop.open { display: grid; }
+
+      .settings-dialog {
+        width: min(760px, 100%);
+        max-height: min(850px, 92vh);
+        overflow: auto;
+        border-radius: var(--radius-xl);
+        padding: 22px;
+      }
+
+      .settings-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .settings-header h3 {
+        margin: 0;
+        font-size: 24px;
+        letter-spacing: -0.04em;
+      }
+
+      .settings-header p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .settings-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      .field {
+        display: grid;
+        gap: 7px;
+      }
+
+      .field.full { grid-column: 1 / -1; }
+
+      label {
+        color: var(--muted-strong);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      input, select {
+        width: 100%;
+        min-height: 44px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        outline: 0;
+        background: rgba(2, 6, 23, 0.45);
+        color: var(--text);
+        padding: 0 12px;
+      }
+
+      input:focus, textarea:focus, select:focus {
+        border-color: rgba(139, 92, 246, 0.62);
+        box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.13);
+      }
+
+      .field-note {
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .settings-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .primary-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: white;
+        padding: 0 16px;
+        font-weight: 850;
+      }
+
+      .notice {
+        margin-top: 16px;
+        border: 1px solid rgba(250, 204, 21, 0.22);
+        border-radius: 16px;
+        background: rgba(250, 204, 21, 0.08);
+        color: #fde68a;
+        padding: 12px 14px;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .toast {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        max-width: min(420px, calc(100vw - 36px));
+        transform: translateY(18px);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: rgba(15, 23, 42, 0.94);
+        box-shadow: var(--shadow);
+        color: var(--text);
+        opacity: 0;
+        pointer-events: none;
+        padding: 12px 14px;
+        transition: 180ms ease;
+        z-index: 30;
+      }
+
+      .toast.show {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      @media (max-width: 880px) {
+        body { overflow: hidden; }
+        .app-shell { grid-template-columns: 1fr; padding: 10px; }
+        .sidebar {
+          position: fixed;
+          inset: 10px auto 10px 10px;
+          width: min(320px, calc(100vw - 20px));
+          transform: translateX(calc(-100% - 16px));
+          transition: transform 180ms ease;
+          z-index: 10;
+        }
+        .sidebar.open { transform: translateX(0); }
+        .mobile-menu { display: inline-flex; }
+        .topbar { padding: 12px; }
+        .topbar-actions { gap: 6px; }
+        .model-chip { display: none; }
+        .messages { padding: 18px 12px; }
+        .bubble { max-width: calc(100vw - 86px); }
+        .composer-wrap { padding: 12px; }
+        .prompt-grid { grid-template-columns: 1fr; }
+        .settings-grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar" id="sidebar" aria-label="Chat sessions">
+        <div class="brand-row">
+          <div class="brand-mark" aria-hidden="true">L</div>
+          <div class="brand-copy">
+            <h1>Loomra Chat</h1>
+            <p>Private OpenRouter workspace</p>
+          </div>
+        </div>
+        <button class="new-chat" id="newChatButton" type="button">+ New chat</button>
+        <div class="sidebar-section-title">Conversations</div>
+        <div class="chat-list" id="chatList"></div>
+        <div class="sidebar-footer">
+          <button class="ghost-button" id="settingsButton" type="button">⚙ Settings</button>
+          <button class="ghost-button danger" id="clearAllButton" type="button">Clear local data</button>
+        </div>
+      </aside>
+
+      <section class="chat-card" aria-label="Chat interface">
+        <header class="topbar">
+          <button class="ghost-button mobile-menu" id="menuButton" type="button">☰</button>
+          <div class="session-heading">
+            <h2 id="currentTitle">New chat</h2>
+            <p id="currentSubtitle">Configure your OpenRouter key to begin.</p>
+          </div>
+          <div class="topbar-actions">
+            <span class="pill-button model-chip" id="modelChip">No model selected</span>
+            <span class="status-dot" id="statusDot" title="API key status"></span>
+            <button class="ghost-button" id="exportButton" type="button">Export</button>
+          </div>
+        </header>
+
+        <div class="messages" id="messages" aria-live="polite"></div>
+
+        <footer class="composer-wrap">
+          <form class="composer" id="composer">
+            <textarea id="promptInput" rows="1" placeholder="Message Loomra…" autocomplete="off"></textarea>
+            <button class="send-button" id="sendButton" type="submit" aria-label="Send message">↑</button>
+          </form>
+          <div class="composer-hint">Enter to send • Shift+Enter for a new line • Your key and chats stay in this browser.</div>
+        </footer>
+      </section>
+    </main>
+
+    <div class="settings-backdrop" id="settingsBackdrop" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="settings-dialog">
+        <div class="settings-header">
+          <div>
+            <h3 id="settingsTitle">OpenRouter settings</h3>
+            <p>Paste your API key, choose a model, and deploy this same static page on Netlify.</p>
+          </div>
+          <button class="ghost-button" id="closeSettingsButton" type="button">Close</button>
+        </div>
+
+        <div class="settings-grid">
+          <div class="field full">
+            <label for="apiKeyInput">OpenRouter API key</label>
+            <input id="apiKeyInput" type="password" placeholder="sk-or-v1-…" autocomplete="off" />
+            <div class="field-note">Stored in localStorage on this device only. For a public app, use a serverless proxy instead.</div>
+          </div>
+
+          <div class="field full">
+            <label for="modelInput">Model</label>
+            <input id="modelInput" list="modelOptions" placeholder="deepseek/deepseek-chat-v3-0324:free" />
+            <datalist id="modelOptions"></datalist>
+            <div class="field-note">Use any OpenRouter model slug. Click “Load free models” to populate free options from OpenRouter.</div>
+          </div>
+
+          <div class="field">
+            <label for="temperatureInput">Temperature</label>
+            <input id="temperatureInput" type="number" min="0" max="2" step="0.1" value="0.7" />
+          </div>
+
+          <div class="field">
+            <label for="maxTokensInput">Max completion tokens</label>
+            <input id="maxTokensInput" type="number" min="16" max="8192" step="16" value="1024" />
+          </div>
+
+          <div class="field full">
+            <label for="systemPromptInput">System prompt</label>
+            <input id="systemPromptInput" value="You are a helpful, concise assistant." />
+          </div>
+        </div>
+
+        <div class="settings-actions">
+          <button class="ghost-button" id="loadModelsButton" type="button">Load free models</button>
+          <div>
+            <button class="ghost-button" id="forgetKeyButton" type="button">Forget key</button>
+            <button class="primary-button" id="saveSettingsButton" type="button">Save settings</button>
+          </div>
+        </div>
+
+        <div class="notice">
+          Static-site privacy note: this app calls OpenRouter directly from the browser, which is convenient for a private personal deployment. Anyone who can use the page with your saved browser profile can use the saved key. Do not hard-code secrets into this file before publishing it.
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <script>
+      const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
+      const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
+      const STORAGE_KEY = "loomra.chat.state.v1";
+      const SETTINGS_KEY = "loomra.chat.settings.v1";
+      const DEFAULT_MODEL = "deepseek/deepseek-chat-v3-0324:free";
+
+      const state = {
+        chats: [],
+        activeChatId: null,
+        isSending: false,
+        abortController: null,
+      };
+
+      const settings = {
+        apiKey: "",
+        model: DEFAULT_MODEL,
+        temperature: 0.7,
+        maxTokens: 1024,
+        systemPrompt: "You are a helpful, concise assistant.",
+      };
+
+      const els = {
+        sidebar: document.getElementById("sidebar"),
+        newChatButton: document.getElementById("newChatButton"),
+        chatList: document.getElementById("chatList"),
+        settingsButton: document.getElementById("settingsButton"),
+        clearAllButton: document.getElementById("clearAllButton"),
+        menuButton: document.getElementById("menuButton"),
+        currentTitle: document.getElementById("currentTitle"),
+        currentSubtitle: document.getElementById("currentSubtitle"),
+        modelChip: document.getElementById("modelChip"),
+        statusDot: document.getElementById("statusDot"),
+        exportButton: document.getElementById("exportButton"),
+        messages: document.getElementById("messages"),
+        composer: document.getElementById("composer"),
+        promptInput: document.getElementById("promptInput"),
+        sendButton: document.getElementById("sendButton"),
+        settingsBackdrop: document.getElementById("settingsBackdrop"),
+        closeSettingsButton: document.getElementById("closeSettingsButton"),
+        apiKeyInput: document.getElementById("apiKeyInput"),
+        modelInput: document.getElementById("modelInput"),
+        modelOptions: document.getElementById("modelOptions"),
+        temperatureInput: document.getElementById("temperatureInput"),
+        maxTokensInput: document.getElementById("maxTokensInput"),
+        systemPromptInput: document.getElementById("systemPromptInput"),
+        loadModelsButton: document.getElementById("loadModelsButton"),
+        forgetKeyButton: document.getElementById("forgetKeyButton"),
+        saveSettingsButton: document.getElementById("saveSettingsButton"),
+        toast: document.getElementById("toast"),
+      };
+
+      function uid() {
+        return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+
+      function nowIso() {
+        return new Date().toISOString();
+      }
+
+      function activeChat() {
+        return state.chats.find((chat) => chat.id === state.activeChatId);
+      }
+
+      function createChat() {
+        const chat = {
+          id: uid(),
+          title: "New chat",
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+          messages: [],
+        };
+        state.chats.unshift(chat);
+        state.activeChatId = chat.id;
+        saveState();
+        render();
+        els.promptInput.focus();
+      }
+
+      function loadState() {
+        try {
+          const savedState = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+          const savedSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+          Object.assign(settings, savedSettings);
+          state.chats = Array.isArray(savedState.chats) ? savedState.chats : [];
+          state.activeChatId = savedState.activeChatId || state.chats[0]?.id || null;
+        } catch (error) {
+          console.warn("Unable to load saved state", error);
+        }
+
+        if (!state.chats.length) createChat();
+      }
+
+      function saveState() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ chats: state.chats, activeChatId: state.activeChatId }));
+      }
+
+      function saveSettings() {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      }
+
+      function escapeHtml(value) {
+        return value.replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[char]));
+      }
+
+      function renderMarkdownLite(content) {
+        const escaped = escapeHtml(content || "");
+        return escaped
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/\n/g, "<br />");
+      }
+
+      function formatDate(iso) {
+        return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+      }
+
+      function renderChatList() {
+        els.chatList.innerHTML = state.chats.map((chat) => `
+          <button type="button" class="${chat.id === state.activeChatId ? "active" : ""}" data-chat-id="${chat.id}">
+            <span class="chat-title">${escapeHtml(chat.title || "New chat")}</span>
+            <span class="delete-chat" data-delete-id="${chat.id}" title="Delete chat">×</span>
+            <span class="chat-date">${formatDate(chat.updatedAt || chat.createdAt)}</span>
+          </button>
+        `).join("");
+      }
+
+      function renderMessages() {
+        const chat = activeChat();
+        if (!chat || chat.messages.length === 0) {
+          els.messages.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-card">
+                <h3><span class="gradient-text">What should we build?</span></h3>
+                <p>A personal, Netlify-friendly chat UI wired to OpenRouter. Add your API key in settings, choose a free model, and start chatting.</p>
+                <div class="prompt-grid">
+                  <button type="button" data-example="Help me plan a focused 2-hour work session.">Plan a focused work block</button>
+                  <button type="button" data-example="Draft a friendly but concise email reply.">Draft an email</button>
+                  <button type="button" data-example="Explain this concept like I'm technical but new to it: retrieval augmented generation.">Explain a concept</button>
+                  <button type="button" data-example="Give me three project ideas I can build and deploy as static sites.">Brainstorm project ideas</button>
+                </div>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        els.messages.innerHTML = chat.messages.map((message) => `
+          <article class="message-row ${message.role}">
+            <div class="avatar">${message.role === "user" ? "You" : "AI"}</div>
+            <div class="bubble">
+              ${message.pending ? '<span class="typing"><span></span><span></span><span></span></span>' : renderMarkdownLite(message.content)}
+              <div class="message-meta">${message.role === "assistant" ? escapeHtml(message.model || settings.model || "assistant") : "You"} · ${formatDate(message.createdAt)}</div>
+            </div>
+          </article>
+        `).join("");
+        els.messages.scrollTop = els.messages.scrollHeight;
+      }
+
+      function renderHeader() {
+        const chat = activeChat();
+        els.currentTitle.textContent = chat?.title || "New chat";
+        els.currentSubtitle.textContent = settings.apiKey ? "Ready to chat through OpenRouter." : "Configure your OpenRouter key to begin.";
+        els.modelChip.textContent = settings.model || "No model selected";
+        els.statusDot.classList.toggle("ready", Boolean(settings.apiKey && settings.model));
+        els.sendButton.disabled = state.isSending;
+      }
+
+      function renderSettingsForm() {
+        els.apiKeyInput.value = settings.apiKey || "";
+        els.modelInput.value = settings.model || "";
+        els.temperatureInput.value = settings.temperature;
+        els.maxTokensInput.value = settings.maxTokens;
+        els.systemPromptInput.value = settings.systemPrompt;
+      }
+
+      function render() {
+        renderChatList();
+        renderMessages();
+        renderHeader();
+        renderSettingsForm();
+      }
+
+      function toast(message) {
+        els.toast.textContent = message;
+        els.toast.classList.add("show");
+        window.clearTimeout(toast.timeout);
+        toast.timeout = window.setTimeout(() => els.toast.classList.remove("show"), 3200);
+      }
+
+      function openSettings() {
+        els.settingsBackdrop.classList.add("open");
+        renderSettingsForm();
+        window.setTimeout(() => els.apiKeyInput.focus(), 50);
+      }
+
+      function closeSettings() {
+        els.settingsBackdrop.classList.remove("open");
+      }
+
+      function updateTitleFromFirstMessage(chat) {
+        if (!chat || chat.title !== "New chat") return;
+        const firstUserMessage = chat.messages.find((message) => message.role === "user")?.content || "";
+        chat.title = firstUserMessage.slice(0, 42) + (firstUserMessage.length > 42 ? "…" : "") || "New chat";
+      }
+
+      function getRequestMessages(chat) {
+        const requestMessages = [];
+        if (settings.systemPrompt.trim()) {
+          requestMessages.push({ role: "system", content: settings.systemPrompt.trim() });
+        }
+        chat.messages
+          .filter((message) => !message.pending)
+          .forEach((message) => requestMessages.push({ role: message.role, content: message.content }));
+        return requestMessages;
+      }
+
+      async function sendPrompt(prompt) {
+        const content = prompt.trim();
+        if (!content || state.isSending) return;
+        if (!settings.apiKey || !settings.model) {
+          openSettings();
+          toast("Add your OpenRouter API key and model first.");
+          return;
+        }
+
+        const chat = activeChat();
+        chat.messages.push({ role: "user", content, createdAt: nowIso() });
+        updateTitleFromFirstMessage(chat);
+        chat.updatedAt = nowIso();
+        els.promptInput.value = "";
+        resizePrompt();
+
+        const assistantMessage = {
+          role: "assistant",
+          content: "",
+          pending: true,
+          model: settings.model,
+          createdAt: nowIso(),
+        };
+        chat.messages.push(assistantMessage);
+        state.isSending = true;
+        state.abortController = new AbortController();
+        saveState();
+        render();
+
+        try {
+          const response = await fetch(OPENROUTER_CHAT_URL, {
+            method: "POST",
+            signal: state.abortController.signal,
+            headers: {
+              "Authorization": `Bearer ${settings.apiKey}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": window.location.origin,
+              "X-Title": "Loomra Chat",
+            },
+            body: JSON.stringify({
+              model: settings.model,
+              messages: getRequestMessages(chat),
+              temperature: Number(settings.temperature),
+              max_tokens: Number(settings.maxTokens),
+            }),
+          });
+
+          const rawText = await response.text();
+          let payload;
+          try {
+            payload = rawText ? JSON.parse(rawText) : {};
+          } catch {
+            payload = { error: { message: rawText } };
+          }
+
+          if (!response.ok) {
+            throw new Error(payload?.error?.message || `OpenRouter request failed with ${response.status}`);
+          }
+
+          assistantMessage.pending = false;
+          assistantMessage.content = payload?.choices?.[0]?.message?.content || "I did not receive any text from the model.";
+          assistantMessage.model = payload?.model || settings.model;
+          chat.updatedAt = nowIso();
+          saveState();
+          render();
+        } catch (error) {
+          assistantMessage.pending = false;
+          assistantMessage.content = `Error: ${error.message || "Unable to reach OpenRouter."}`;
+          chat.updatedAt = nowIso();
+          saveState();
+          render();
+          toast(assistantMessage.content);
+        } finally {
+          state.isSending = false;
+          state.abortController = null;
+          renderHeader();
+        }
+      }
+
+      function resizePrompt() {
+        els.promptInput.style.height = "auto";
+        els.promptInput.style.height = `${Math.min(220, els.promptInput.scrollHeight)}px`;
+      }
+
+      async function loadFreeModels() {
+        els.loadModelsButton.disabled = true;
+        els.loadModelsButton.textContent = "Loading…";
+        try {
+          const response = await fetch(OPENROUTER_MODELS_URL);
+          if (!response.ok) throw new Error(`Unable to load models (${response.status})`);
+          const payload = await response.json();
+          const models = (payload.data || [])
+            .filter((model) => Number(model?.pricing?.prompt || 0) === 0 && Number(model?.pricing?.completion || 0) === 0)
+            .sort((a, b) => a.id.localeCompare(b.id));
+          els.modelOptions.innerHTML = models.map((model) => `<option value="${escapeHtml(model.id)}">${escapeHtml(model.name || model.id)}</option>`).join("");
+          toast(models.length ? `Loaded ${models.length} free models.` : "No free models found in the model list.");
+        } catch (error) {
+          toast(error.message || "Unable to load OpenRouter models.");
+        } finally {
+          els.loadModelsButton.disabled = false;
+          els.loadModelsButton.textContent = "Load free models";
+        }
+      }
+
+      function exportChat() {
+        const chat = activeChat();
+        if (!chat) return;
+        const blob = new Blob([JSON.stringify(chat, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${(chat.title || "loomra-chat").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      els.newChatButton.addEventListener("click", createChat);
+      els.settingsButton.addEventListener("click", openSettings);
+      els.closeSettingsButton.addEventListener("click", closeSettings);
+      els.exportButton.addEventListener("click", exportChat);
+      els.menuButton.addEventListener("click", () => els.sidebar.classList.toggle("open"));
+      els.loadModelsButton.addEventListener("click", loadFreeModels);
+
+      els.settingsBackdrop.addEventListener("click", (event) => {
+        if (event.target === els.settingsBackdrop) closeSettings();
+      });
+
+      els.saveSettingsButton.addEventListener("click", () => {
+        settings.apiKey = els.apiKeyInput.value.trim();
+        settings.model = els.modelInput.value.trim() || DEFAULT_MODEL;
+        settings.temperature = Number(els.temperatureInput.value || 0.7);
+        settings.maxTokens = Number(els.maxTokensInput.value || 1024);
+        settings.systemPrompt = els.systemPromptInput.value.trim();
+        saveSettings();
+        closeSettings();
+        render();
+        toast("Settings saved.");
+      });
+
+      els.forgetKeyButton.addEventListener("click", () => {
+        settings.apiKey = "";
+        els.apiKeyInput.value = "";
+        saveSettings();
+        render();
+        toast("API key removed from this browser.");
+      });
+
+      els.clearAllButton.addEventListener("click", () => {
+        if (!confirm("Clear chats and settings stored in this browser?")) return;
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(SETTINGS_KEY);
+        state.chats = [];
+        state.activeChatId = null;
+        Object.assign(settings, { apiKey: "", model: DEFAULT_MODEL, temperature: 0.7, maxTokens: 1024, systemPrompt: "You are a helpful, concise assistant." });
+        createChat();
+        toast("Local data cleared.");
+      });
+
+      els.chatList.addEventListener("click", (event) => {
+        const deleteId = event.target.dataset.deleteId;
+        if (deleteId) {
+          event.stopPropagation();
+          state.chats = state.chats.filter((chat) => chat.id !== deleteId);
+          if (!state.chats.length) {
+            createChat();
+            return;
+          }
+          if (state.activeChatId === deleteId) state.activeChatId = state.chats[0].id;
+          saveState();
+          render();
+          return;
+        }
+
+        const chatButton = event.target.closest("[data-chat-id]");
+        if (!chatButton) return;
+        state.activeChatId = chatButton.dataset.chatId;
+        els.sidebar.classList.remove("open");
+        saveState();
+        render();
+      });
+
+      els.messages.addEventListener("click", (event) => {
+        const example = event.target.dataset.example;
+        if (!example) return;
+        els.promptInput.value = example;
+        resizePrompt();
+        els.promptInput.focus();
+      });
+
+      els.composer.addEventListener("submit", (event) => {
+        event.preventDefault();
+        sendPrompt(els.promptInput.value);
+      });
+
+      els.promptInput.addEventListener("input", resizePrompt);
+      els.promptInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          sendPrompt(els.promptInput.value);
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeSettings();
+          els.sidebar.classList.remove("open");
+        }
+      });
+
+      loadState();
+      render();
+      resizePrompt();
+    </script>
+  </body>
+</html>
